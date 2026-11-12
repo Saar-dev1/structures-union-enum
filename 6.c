@@ -1,7 +1,7 @@
-// Unions
+
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+#include <stddef.h>
 
 typedef union {
     int i;
@@ -15,43 +15,141 @@ typedef struct {
     char str[20];
 } StructData;
 
-int main() {
+typedef enum {
+    VALUE_INT, VALUE_FLOAT, VALUE_TEXT
+} ValueType;
 
-    UnionData udata;
+typedef struct {
+    UnionData data;
+    ValueType type;
+} TaggedValue;
 
-    StructData sdata;
-    // sdata = (StructData) {10, 220.5, "Struct Programming"};
-    sdata.i = 10;
-    strcpy(sdata.str, "Struct Programming");
-    sdata.f = 220.5;
+// Set integer
+void setInt(TaggedValue *r, int n) {
+    r->data.i = n;
+    r->type = VALUE_INT;
+}
 
-    udata.i = 10;
-    printf("udata.i: %d\n", udata.i);
+// Set float
+void setFloat(TaggedValue *r, float n) {
+    r->data.f = n;
+    r->type = VALUE_FLOAT;
+}
 
-    strcpy(udata.str, "Union Programming");
-    printf("udata.str: %s\n", udata.str);
+// Set string
+int setText(TaggedValue *r, const char *s) {
+    if (!r || !s || strlen(s) >= 20)
+        return 0;
 
-    udata.f = 220.5;
-    printf("udata.f: %.2f\n\n", udata.f);
+    strcpy(r->data.str, s);
+    r->type = VALUE_TEXT;
+    return 1;
+}
 
-    // Now see the values after overwriting
-    printf("After overwriting:\n");
-    printf("udata.i: %d\n", udata.i);
-    printf("udata.str: %s\n", udata.str);
-    printf("udata.f: %.2f\n\n", udata.f);
+// Display active member
+void display(TaggedValue r) {
+    switch (r.type) {
+        case VALUE_INT:
+            printf("Integer: %d\n", r.data.i);
+            break;
+        case VALUE_FLOAT:
+            printf("Float: %.2f\n", r.data.f);
+            break;
+        case VALUE_TEXT:
+            printf("String: %s\n", r.data.str);
+            break;
+        default:
+            printf("Invalid tag\n");
+    }
+}
 
-    // Memory Addresses - Union
-    printf("udata.i: %p\n", &udata.i);
-    printf("udata.str: %p\n", &udata.str);
-    printf("udata.f: %p\n\n", &udata.f);
+int main(void) {
+    UnionData u;
+    StructData s;
 
-    // Memory Addresses - Struct
-    printf("sdata.i: %p\n", &sdata.i);
-    printf("sdata.str: %p\n", &sdata.str);
-    printf("sdata.f: %p\n\n", &sdata.f);
+    // Basic demonstration
+    s.i = 10;
+    s.f = 220.5f;
+    strcpy(s.str, "Struct Programming");
 
-    printf("Size of the Union - %lu\n", sizeof(UnionData));
-    printf("Size of the Structure - %lu\n", sizeof(StructData));
+    printf("Structure: %d %.2f %s\n", s.i, s.f, s.str);
+
+    u.i = 10;
+    printf("Union Integer: %d\n", u.i);
+
+    strcpy(u.str, "Union Programming");
+    printf("Union String: %s\n", u.str);
+
+    u.f = 220.5f;
+    printf("Union Float: %.2f\n", u.f);
+
+    // Size and alignment
+    printf("\nSizes:\n");
+    printf("Union: %zu\n", sizeof(u));
+    printf("Structure: %zu\n", sizeof(s));
+    printf("Tagged Union: %zu\n", sizeof(TaggedValue));
+
+    printf("Alignments: %zu %zu\n",
+           _Alignof(UnionData), _Alignof(StructData));
+
+    // Addresses
+    printf("\nUnion Addresses:\n");
+    printf("%p %p %p\n",
+           (void *)&u.i, (void *)&u.f, (void *)&u.str);
+
+    printf("\nStructure Addresses:\n");
+    printf("%p %p %p\n",
+           (void *)&s.i, (void *)&s.f, (void *)&s.str);
+
+    // Structure offsets
+    printf("\nOffsets:\n");
+    printf("%zu %zu %zu\n",
+           offsetof(StructData, i),
+           offsetof(StructData, f),
+           offsetof(StructData, str));
+
+    // Memory comparison
+    printf("\nMemory for 100 records:\n");
+    printf("Union: %zu bytes\n", 100 * sizeof(UnionData));
+    printf("Structure: %zu bytes\n", 100 * sizeof(StructData));
+
+    // Five tagged records
+    TaggedValue r[5];
+
+    setInt(&r[0], 10);
+    setFloat(&r[1], 220.5f);
+    setText(&r[2], "Union Programming");
+    setInt(&r[3], 500);
+    setText(&r[4], "C Language");
+
+    printf("\nTagged Records:\n");
+    for (int i = 0; i < 5; i++)
+        display(r[i]);
+
+    // Edge cases
+    printf("\nEdge Tests:\n");
+
+    printf("19 characters: %s\n",
+        setText(&r[0], "1234567890123456789")
+        ? "Accepted" : "Rejected");
+
+    printf("20 characters: %s\n",
+        setText(&r[0], "12345678901234567890")
+        ? "Accepted" : "Rejected");
+
+    // Change data type
+    setFloat(&r[0], 12.5f);
+    display(r[0]);
+
+    // Invalid tag
+    r[0].type = (ValueType)999;
+    display(r[0]);
+
+    printf("\nObservation:\n");
+    printf("Union members share memory.\n");
+    printf("Structure members have separate memory.\n");
+    printf("Padding may affect memory size.\n");
+    printf("Enum identifies the active union member.\n");
 
     return 0;
 }
